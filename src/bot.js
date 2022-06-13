@@ -7,22 +7,31 @@ const INTENTS = [
     Intents.FLAGS.DIRECT_MESSAGES,
     Intents.FLAGS.GUILD_MESSAGE_TYPING,
 ]
-const bot = new Client({ intents: INTENTS, partials: ['CHANNEL'] });
+const PARTIALS = [
+    'CHANNEL',
+    'USER',
+]
+const bot = new Client({ intents: INTENTS, partials: PARTIALS });
 const PREFIX = '$';
 const CUS_CMDS = ['kick','add','invite'];
+let isTyping = false;
 
 currentDate = () => {
     date = new Date();
     return date.getFullYear() + "-" + date.getMonth() + "-" + date.getDate() + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
 }
 
-bot.on('ready', () => {
+bot.once('ready', () => {
     console.log(`[Logged In] --> ${currentDate()} --> ${bot.user.username, bot.user.tag}`);
+    console.log(bot.channels.cache.each(user => console.log(user)));
+    // goodMorningGreeter();
+    // console.log(bot);
 });
 
 bot.on('typingStart', (type) => {
-    console.log("Typing : ", type, type.author.tag);
-})
+    console.log(`[Typing] -----> ${type.user.username}`);
+    // setTimeout(() => {bot.dis dispatchEvent('typingStart')}, 3000);
+});
 
 bot.on('messageCreate', (message) => {
     if (!message.author.bot){
@@ -40,6 +49,17 @@ bot.on('messageCreate', (message) => {
             }
         }
     }
-})
+});
+
+setInterval(() => {
+    // console.log(bot.channels.cache.each.);
+    console.log();
+}, 10000);
+
+const goodMorningGreeter = () => {
+    bot.setInterval(() => {
+       console.log('Called');
+    }, 10000);
+};
 
 bot.login(process.env.BOT_TOKEN);
