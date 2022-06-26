@@ -11,6 +11,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=16.15.0"
+  },
   "dependencies": {
     "axios": "^0.27.2",
     "discord.js": "^13.8.0",
