@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Client, Intents } = require('discord.js');
+const axios = require('axios').default;
 
 const INTENTS = [
     Intents.FLAGS.GUILDS,
@@ -14,6 +15,13 @@ const PARTIALS = [
 const bot = new Client({ intents: INTENTS, partials: PARTIALS });
 const PREFIX = '$';
 const CUS_CMDS = ['kick','add','invite'];
+const GREET_TIME = {
+    hour: 10,
+    minute: 00,
+    zone: 'local',
+    format: 'ampm',
+    interval: 24
+}
 let isTyping = false;
 
 currentDate = () => {
@@ -23,9 +31,14 @@ currentDate = () => {
 
 bot.once('ready', () => {
     console.log(`[Logged In] --> ${currentDate()} --> ${bot.user.username, bot.user.tag}`);
-    console.log(bot.channels.cache.each(user => console.log(user)));
-    // goodMorningGreeter();
-    // console.log(bot);
+    const initInterval = setInterval((date = new Date()) => {
+        if (date.getHours() === GREET_TIME.hour && date.getMinutes() === GREET_TIME.minute) {
+            console.log(`[Greeter  ] --> ${currentDate()} --> Started`);
+            greeter();
+            goodMorningGreeter();
+            clearInterval(initInterval);
+        }
+    }, 1000);
 });
 
 bot.on('typingStart', (type) => {
@@ -35,7 +48,7 @@ bot.on('typingStart', (type) => {
 
 bot.on('messageCreate', (message) => {
     if (!message.author.bot){
-        if(message.content === 'hello') {
+        if (message.content === 'hello') {
             console.log('message', message.author.tag);
             message.channel.send(`Hello ${message.author.tag}`);
         }
@@ -51,15 +64,25 @@ bot.on('messageCreate', (message) => {
     }
 });
 
-setInterval(() => {
-    // console.log(bot.channels.cache.each.);
-    console.log();
-}, 10000);
+const greeter = () => {
+    axios.get(`https://tenor.googleapis.com/v2/search?q=Good Morning&key=${process.env.TENOR_TOKEN}&client_key=superbot&limit=8`)
+        .then(response => response.data.results)
+        .then(results => {
+            bot.channels.cache
+                .filter((channel) => channel.type === 'GUILD_TEXT')
+                .forEach((channel) => {
+                    const index = Math.floor(Math.random() * results.length);
+                    channel.send(results[index].media_formats.gif.url);
+                });
+        })
+        .then(response => console.log(`[Greeter  ] --> ${currentDate()} --> Greetings Done!`))
+        .catch(error => console.log('Error: ', error));
+}
 
 const goodMorningGreeter = () => {
-    bot.setInterval(() => {
-       console.log('Called');
-    }, 10000);
+    setInterval(() => {
+        greeter();
+    }, GREET_TIME.interval*3600);
 };
 
 bot.login(process.env.BOT_TOKEN);
