@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --inspect ./src/bot.js",
     "start": "node ./src/bot.js",
     "dev": "nodemon ./src/bot.js"
   },
@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.27.2",
     "discord.js": "^13.8.0",
     "dotenv": "^16.0.1",
     "nodemon": "^2.0.16"
