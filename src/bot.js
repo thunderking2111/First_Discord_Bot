@@ -16,9 +16,9 @@ const bot = new Client({ intents: INTENTS, partials: PARTIALS });
 const PREFIX = '$';
 const CUS_CMDS = ['kick','add','invite'];
 const GREET_TIME = {
-    hour: 10,
-    minute: 00,
-    zone: 'local',
+    hour: 04,
+    minute: 30,
+    zone: 'utc',
     format: 'ampm',
     interval: 24
 }
@@ -73,6 +73,7 @@ const greeter = () => {
                 .forEach((channel) => {
                     const index = Math.floor(Math.random() * results.length);
                     channel.send(results[index].media_formats.gif.url);
+                    return true;
                 });
         })
         .then(response => console.log(`[Greeter  ] --> ${currentDate()} --> Greetings Done!`))
@@ -82,7 +83,7 @@ const greeter = () => {
 const goodMorningGreeter = () => {
     setInterval(() => {
         greeter();
-    }, GREET_TIME.interval*3600);
+    }, GREET_TIME.interval*3600000);
 };
 
 bot.login(process.env.BOT_TOKEN);
