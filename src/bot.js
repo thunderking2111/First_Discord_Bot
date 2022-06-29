@@ -48,18 +48,28 @@ bot.on('typingStart', (type) => {
 
 bot.on('messageCreate', (message) => {
     if (!message.author.bot){
-        if (message.content === 'hello') {
-            console.log('message', message.author.tag);
-            message.channel.send(`Hello ${message.author.tag}`);
-        }
-        else{
-            const [CMD, ...args] = message.content
-                                    .substring(PREFIX.length)
-                                    .split(/\s+/);
-            console.log(CMD, args);
-            if (CUS_CMDS.includes(CMD)) {
-                console.log('Gotcha');
+        if (message.channel.id === '991406109598425199') {
+            if (message.content[0] === CUS_COM_PRE) {
+                const CMD = message.content
+                            .substring(1)
+                            .trim();
+                try {
+                    const res = eval(CMD);
+                    if (res instanceof Promise) {
+                        res.then(res => {
+                            console.log('Prom');
+                            message.channel.send('```json\n' + JSON.stringify(res.toJSON() ,null,2) + '\n```' );
+                        })
+                    } else {
+                        message.channel.send('```json\n' + JSON.stringify(res.toJSON() ,null,2) + '\n```' );
+                    }
+                } catch(e) {
+                    message.channel.send('> Something Went Wrong !! ☠️☠️');
+                    message.channel.send('```js\n' + e.stack + '\n```' );
+                }
             }
+        } else if (message.content === 'hello'){
+            message.channel.send('Hello')
         }
     }
 });
