@@ -168,6 +168,11 @@ bot.on('messageCreate', (message) => {
 });
 
 const greeter = () => {
+    bot.channels.cache
+        .filter((channel) => channel.type === 'GUILD_TEXT')
+        .forEach((channel) => {
+
+        })
     axios.get(`https://tenor.googleapis.com/v2/search?q=Good Morning&key=${process.env.TENOR_TOKEN}&client_key=superbot&limit=8`)
         .then(response => response.data.results)
         .then(results => {
