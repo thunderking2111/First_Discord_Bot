@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, Intents } = require('discord.js');
+const { Client, Intents, MessageEmbed } = require('discord.js');
 const axios = require('axios').default;
 
 const INTENTS = [
@@ -13,7 +13,7 @@ const PARTIALS = [
     'USER',
 ]
 const bot = new Client({ intents: INTENTS, partials: PARTIALS });
-const PREFIX = '$';
+const CUS_COM_PRE = '?';
 const CUS_CMDS = ['kick','add','invite'];
 const GREET_TIME = {
     hour: 04,
@@ -22,12 +22,26 @@ const GREET_TIME = {
     format: 'ampm',
     interval: 24
 }
-let isTyping = false;
+const TEST_CHNL = '991406109598425199';
+const LOG_CHNL = '992506051175923762';
 
 currentDate = () => {
     date = new Date();
     return date.getFullYear() + "-" + date.getMonth() + "-" + date.getDate() + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
 }
+
+process.on('uncaughtException', (err, origin) => {
+    const errTitle = err.stack.slice(0, err.stack.indexOf('\n'));
+    const errDis = err.stack.slice(err.stack.indexOf('\n')+1, err.stack.length);
+    const embedMsg = new MessageEmbed()
+                            .setColor('RED')
+                            .setTitle('☠️ ERROR ☠️')
+                            .addFields(
+                                {name: errTitle, value: '```js\n' + errDis + '\n```', inline: false},
+                            );
+    bot.channels.cache.get(LOG_CHNL)
+        .send({ embeds: [embedMsg]});
+});
 
 bot.once('ready', () => {
     console.log(`[Logged In] --> ${currentDate()} --> ${bot.user.username, bot.user.tag}`);
@@ -48,7 +62,7 @@ bot.on('typingStart', (type) => {
 
 bot.on('messageCreate', (message) => {
     if (!message.author.bot){
-        if (message.channel.id === '991406109598425199') {
+        if (message.channel.id === TEST_CHNL) {
             if (message.content[0] === CUS_COM_PRE) {
                 const CMD = message.content
                             .substring(1)
