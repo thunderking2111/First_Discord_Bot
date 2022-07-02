@@ -80,22 +80,21 @@ bot.on('messageCreate', (message) => {
                                 bot.channels.cache
                                     .filter(channel => channel.type === 'GUILD_TEXT')
                                     .forEach(channel => {
-                                        if (!channel_locks[channel.id]) {
+                                        if (! channel_locks[channel.id]) {
                                             channel_locks[channel.id] = true;
                                             console.log(`Clear ${channel.name}`);
                                             channel.messages._fetchMany({}, true)
-                                                .then(messages => {
-                                                      new Promise(async (res) => {
-                                                          messages.forEach(async (message) => message.delete());
-                                                          res();
-                                                      })
-                                                      .then(r => console.log(`Done Clearing ${message.channel.name}`))
-                                                      .catch(e => console.log(`Couldn't Clear ${message.channel.name} \n ${e}`))
-                                                      .finally(() => channel_locks[channel.id] = true);
+                                                .then(async (messages) => {
+                                                    for (let message of messages.values()) {
+                                                        await message.delete();
+                                                    }
+                                                    return Promise.resolve();
                                                 })
-                                                .catch(e => console.log(e));
+                                                .then(() => console.log(`Done Clearing ${channel.name}` ))
+                                                .catch(e => console.log(`Couldn't Clear ${channel.name} \n ${e}`))
+                                                .finally(() => channel_locks[channel.id] = false);
                                         } else {
-                                            channel.send(`> Clear already running for ${channel.name}`);
+                                            message.channel.send(`> Clear already running for ${channel.name}`);
                                         }
                                     });
                             } else {
@@ -103,16 +102,14 @@ bot.on('messageCreate', (message) => {
                                     channel_locks[message.channel.id] = true;
                                     console.log(`Clear ${message.channel.name}`);
                                     message.channel.messages._fetchMany({}, true)
-                                        .then(messages => {
-                                              new Promise(async (res) => {
-                                                  messages.forEach(async (message) => message.delete());
-                                                  res();
-                                              })
-                                              .then(r => console.log(`Done Clearing ${message.channel.name}`))
-                                              .catch(e => console.log(`Couldn't Clear ${message.channel.name} \n ${e}`))
-                                              .finally(() => channel_locks[message.channel.id] = true);
-                                        })
-                                        .catch(e => console.log(e));
+                                        .then(async messages => {
+                                            for (let message of messages.values()) {
+                                                await message.delete();
+                                            }
+                                            return Promise.resolve();
+                                        }).then(r => console.log(`Done Clearing ${message.channel.name}`))
+                                        .catch(e => console.log(`Couldn't Clear ${message.channel.name} \n ${e}`))
+                                        .finally(() => channel_locks[message.channel.id] = false);
                                 } else {
                                     message.channel.send(`> Clear already running for ${message.channel.name}`);
                                 }
