@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, Intents, MessageEmbed } = require('discord.js');
+const { Client, Intents, MessageEmbed, DataResolver } = require('discord.js');
 const axios = require('axios').default;
 
 const INTENTS = [
@@ -13,8 +13,10 @@ const PARTIALS = [
     'USER',
 ]
 const bot = new Client({ intents: INTENTS, partials: PARTIALS });
-const CUS_COM_PRE = '?';
-const CUS_CMDS = ['kick','add','invite'];
+let channel_locks = {};
+const CUS_CMDS = ['clear', 'kick','add','invite'];
+const CUS_COM_PRE = '$';
+const EVAL = '?';
 const GREET_TIME = {
     hour: 04,
     minute: 30,
@@ -22,28 +24,28 @@ const GREET_TIME = {
     format: 'ampm',
     interval: 24
 }
-const TEST_CHNL = '991406109598425199';
-const LOG_CHNL = '992506051175923762';
+let TEST_CHNL = null;
+let LOG_CHNL = null;
 
 currentDate = () => {
     date = new Date();
     return date.getFullYear() + "-" + date.getMonth() + "-" + date.getDate() + " " + date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
 }
 
-process.on('uncaughtException', (err, origin) => {
+process.on('uncaughtException', (err) => {
     const errTitle = err.stack.slice(0, err.stack.indexOf('\n'));
     const errDis = err.stack.slice(err.stack.indexOf('\n')+1, err.stack.length);
     const embedMsg = new MessageEmbed()
                             .setColor('RED')
                             .setTitle('☠️ ERROR ☠️')
-                            .addFields(
-                                {name: errTitle, value: '```js\n' + errDis + '\n```', inline: false},
-                            );
-    bot.channels.cache.get(LOG_CHNL)
-        .send({ embeds: [embedMsg]});
+                            .setDescription(errTitle);
+    LOG_CHNL.send({ embeds: [embedMsg]});
+    LOG_CHNL.send('```js\n' + errDis + '\n```');
 });
 
 bot.once('ready', () => {
+    LOG_CHNL = bot.channels.cache.get('992506051175923762');
+    TEST_CHNL = bot.channels.cache.get('991406109598425199');
     console.log(`[Logged In] --> ${currentDate()} --> ${bot.user.username, bot.user.tag}`);
     const initInterval = setInterval((date = new Date()) => {
         if (date.getHours() === GREET_TIME.hour && date.getMinutes() === GREET_TIME.minute) {
@@ -53,37 +55,117 @@ bot.once('ready', () => {
             clearInterval(initInterval);
         }
     }, 1000);
+    const embedMsg = new MessageEmbed()
+        .setColor('GREEN')
+        .setTitle('Logged In');
+    LOG_CHNL.send({ embeds: [embedMsg]});
 });
 
 bot.on('typingStart', (type) => {
     console.log(`[Typing] -----> ${type.user.username}`);
-    // setTimeout(() => {bot.dis dispatchEvent('typingStart')}, 3000);
 });
 
 bot.on('messageCreate', (message) => {
     if (!message.author.bot){
-        if (message.channel.id === TEST_CHNL) {
-            if (message.content[0] === CUS_COM_PRE) {
-                const CMD = message.content
-                            .substring(1)
-                            .trim();
-                try {
-                    const res = eval(CMD);
-                    if (res instanceof Promise) {
-                        res.then(res => {
-                            console.log('Prom');
-                            message.channel.send('```json\n' + JSON.stringify(res.toJSON() ,null,2) + '\n```' );
-                        })
-                    } else {
-                        message.channel.send('```json\n' + JSON.stringify(res.toJSON() ,null,2) + '\n```' );
+        switch(message.content[0]) {
+            case CUS_COM_PRE: {
+                const [CMD, ...args] = message.content
+                                        .substring(1)
+                                        .trim()
+                                        .split(/\s+/);
+                if (CUS_CMDS.includes(CMD)) {
+                    switch(CMD) {
+                        case 'clear': {
+                            if (args[0] === 'all') {
+                                bot.channels.cache
+                                    .filter(channel => channel.type === 'GUILD_TEXT')
+                                    .forEach(channel => {
+                                        if (!channel_locks[channel.id]) {
+                                            channel_locks[channel.id] = true;
+                                            console.log(`Clear ${channel.name}`);
+                                            channel.messages._fetchMany({}, true)
+                                                .then(messages => {
+                                                      new Promise(async (res) => {
+                                                          messages.forEach(async (message) => message.delete());
+                                                          res();
+                                                      })
+                                                      .then(r => console.log(`Done Clearing ${message.channel.name}`))
+                                                      .catch(e => console.log(`Couldn't Clear ${message.channel.name} \n ${e}`))
+                                                      .finally(() => channel_locks[channel.id] = true);
+                                                })
+                                                .catch(e => console.log(e));
+                                        } else {
+                                            channel.send(`> Clear already running for ${channel.name}`);
+                                        }
+                                    });
+                            } else {
+                                if (!channel_locks[message.channel.id]) {
+                                    channel_locks[message.channel.id] = true;
+                                    console.log(`Clear ${message.channel.name}`);
+                                    message.channel.messages._fetchMany({}, true)
+                                        .then(messages => {
+                                              new Promise(async (res) => {
+                                                  messages.forEach(async (message) => message.delete());
+                                                  res();
+                                              })
+                                              .then(r => console.log(`Done Clearing ${message.channel.name}`))
+                                              .catch(e => console.log(`Couldn't Clear ${message.channel.name} \n ${e}`))
+                                              .finally(() => channel_locks[message.channel.id] = true);
+                                        })
+                                        .catch(e => console.log(e));
+                                } else {
+                                    message.channel.send(`> Clear already running for ${message.channel.name}`);
+                                }
+                            }
+                            break;
+                        }
+                        default: {
+                            message.channel.messages._fetchMany({}, true)
+                                .then(messages => {
+                                    messages.forEach(message => message.delete())
+                                })
+                                .catch(e => console.log(e));
+                        }
                     }
-                } catch(e) {
-                    message.channel.send('> Something Went Wrong !! ☠️☠️');
-                    message.channel.send('```js\n' + e.stack + '\n```' );
+                }
+                break;
+            }
+            case EVAL: {
+                if (message.channel.id === TEST_CHNL.id) {
+                        const CMD = message.content
+                                    .substring(1)
+                                    .trim();
+                        try {
+                            const res = eval(CMD);
+                            if (res instanceof Promise) {
+                                res.then(res => {
+                                    console.log('Prom');
+                                    if (typeof res == 'object') {
+                                        message.channel.send('```json\n' + JSON.stringify(res.toJSON() ,null,2) + '\n```' );
+                                    } else {
+                                        message.channel.send(res.toString());
+                                    }
+                                })
+                            } else {
+                                if (typeof res == 'object') {
+                                    message.channel.send('```json\n' + JSON.stringify(res.toJSON() ,null,2) + '\n```' );
+                                } else {
+                                    message.channel.send(res.toString());
+                                }
+                            }
+                        } catch(e) {
+                            message.channel.send('> Something Went Wrong !! ☠️☠️');
+                            message.channel.send('```js\n' + e.stack + '\n```' );
+                        }
+                }
+                break;
+            }
+            default: {
+                if (message.content === 'hello') {
+                    message.channel.send('Hello');
                 }
             }
-        } else if (message.content === 'hello'){
-            message.channel.send('Hello')
+
         }
     }
 });
@@ -110,4 +192,16 @@ const goodMorningGreeter = () => {
     }, GREET_TIME.interval*3600000);
 };
 
-bot.login(process.env.BOT_TOKEN);
+let retry = 0;
+while(true) {
+    try {
+        bot.login(process.env.BOT_TOKEN);
+        break;
+    } catch {
+        console.log(err.stack);
+        if (retry++ >= 5) {
+            console.log('ERROR: Could Not log into Bot');
+            break;
+        }
+    }
+}
