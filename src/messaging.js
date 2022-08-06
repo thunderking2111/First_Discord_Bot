@@ -51,7 +51,6 @@ function setup (objects = {}) {
   Object.entries(objects).forEach(object => {
     global[object[0]] = object[1];
   });
-  console.log(global);
 }
 
 function embadedMsg ({ channel = null, type = null, options = {} } = {}) {
@@ -95,6 +94,7 @@ function messageHandler (message, bot) {
   if (!message.author.bot) {
     switch (message.content[0]) {
       case CUS_COM_PRE: {
+        // eslint-disable-next-line no-unused-vars
         const [CMD, ...args] = message.content
           .substring(1)
           .trim()
@@ -102,49 +102,11 @@ function messageHandler (message, bot) {
         if (CUS_CMDS.includes(CMD)) {
           switch (CMD) {
             case 'clear': {
-              if (args[0] === 'all') {
-                bot.channels.cache
-                  .filter(channel => channel.type === 'GUILD_TEXT')
-                  .forEach(channel => {
-                    if (!global.channelManager.channelLocks[channel.id]) {
-                      global.channelManager.channelLocks[channel.id] = true;
-                      embadedMsg({ channel: message.channel, type: 'notification', options: { title: `Clear ${channel.name}` } });
-                      console.log(`Clear ${channel.name}`);
-                      channel.messages._fetchMany({}, true)
-                        .then(async (messages) => {
-                          for (const message of messages.values()) {
-                            await message.delete();
-                          }
-                          return Promise.resolve();
-                        })
-                        .then(() => console.log(`Done Clearing ${channel.name}`))
-                        .catch(e => embadedMsg({ channel: message.channel, type: 'error', options: { title: 'Something Went Wrong !! ☠️☠️', description: e } }))
-                        .finally(() => {
-                          global.channelManager.channelLocks[channel.id] = false;
-                        });
-                    } else {
-                      embadedMsg({ channel: message.channel, type: 'notification', options: { title: `Clear already running for ${channel.name}` } });
-                    }
-                  });
-              } else {
-                if (!global.channelManager.channelLocks[message.channel.id]) {
-                  global.channelManager.channelLocks[message.channel.id] = true;
-                  console.log(`Clear ${message.channel.name}`);
-                  message.channel.messages._fetchMany({}, true)
-                    .then(async messages => {
-                      for (const message of messages.values()) {
-                        await message.delete();
-                      }
-                      return Promise.resolve();
-                    }).then(r => console.log(`Done Clearing ${message.channel.name}`))
-                    .catch(e => console.log(`Couldn't Clear ${message.channel.name} \n ${e}`))
-                    .finally(() => {
-                      global.channelManager.channelLocks[message.channel.id] = false;
-                    });
-                } else {
-                  message.channel.send(`> Clear already running for ${message.channel.name}`);
-                }
-              }
+              embadedMsg({
+                channel: message.channel,
+                type: 'notification',
+                options: { description: 'Deprecated Command. Use slash command instead.' }
+              });
               break;
             }
             default: {
@@ -164,6 +126,7 @@ function messageHandler (message, bot) {
             .substring(1)
             .trim();
           try {
+            // eslint-disable-next-line no-eval
             const result = (eval)(CMD);
             if (result instanceof Promise) {
               result.then(res => normalMsg(message.channel, res));

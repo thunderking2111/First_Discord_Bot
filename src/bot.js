@@ -39,11 +39,11 @@ process.on('uncaughtException', (err) => {
   }
 });
 
-bot.once('ready', () => {
+bot.once('ready', async () => {
   channelManager.LOG_CHNL = bot.channels.cache.get('992506051175923762');
   channelManager.TEST_CHNL = bot.channels.cache.get('991406109598425199');
   setup();
-  console.log(`[Logged In] --> ${currentDate()} --> ${bot.user.username}, ${bot.user.tag}`);
+  console.log(`[Logged In] --> ${currentDate()} --> ${bot.user.tag}`);
   const initInterval = setInterval((date = new Date()) => {
     if (date.getHours() === GREET_TIME.hour && date.getMinutes() === GREET_TIME.minute) {
       console.log(`[Greeter  ] --> ${currentDate()} --> Started`);
@@ -52,7 +52,32 @@ bot.once('ready', () => {
       clearInterval(initInterval);
     }
   }, 1000);
+  bot.commands = await require('./commands/init.js').init(bot.application.commands);
+  console.log(bot.commands);
   embadedMsg({ type: 'success', options: { title: 'Logged In' } });
+});
+
+bot.on('interactionCreate', (interaction) => {
+  if (interaction.isCommand()) {
+    const { command, options } = interaction;
+    if (command.type === 'CHAT_INPUT') {
+      bot.commands[command.name].execute(bot, options)
+        .then(res => {
+          console.log('Done Executing');
+          interaction.reply({
+            content: res.description,
+            ephemeral: true
+          });
+        })
+        .catch(res => {
+          interaction.reply({
+            content: res.title,
+            ephemeral: true
+          });
+          embadedMsg({ type: 'error', options: { title: res.title, description: res.error } });
+        });
+    }
+  }
 });
 
 bot.on('typingStart', (type) => {
@@ -90,7 +115,7 @@ const greeter = () => {
           return true;
         });
     })
-    .then(response => console.log(`[Greeter  ] --> ${currentDate()} --> Greetings Done!`))
+    .then(() => console.log(`[Greeter  ] --> ${currentDate()} --> Greetings Done!`))
     .catch(error => embadedMsg({ type: 'error', options: { description: error } }));
 };
 
