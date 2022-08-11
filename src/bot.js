@@ -1,5 +1,6 @@
 require('dotenv').config();
-const { Client, Intents, MessageEmbed } = require('discord.js');
+const { Client, Intents } = require('discord.js');
+const { embadedMsg, messageHandler } = require('./messaging.js');
 const axios = require('axios').default;
 
 const INTENTS = [
@@ -13,10 +14,11 @@ const PARTIALS = [
   'USER',
 ];
 const bot = new Client({ intents: INTENTS, partials: PARTIALS });
-const channelLocks = {};
-const CUS_CMDS = ['clear', 'kick', 'add', 'invite'];
-const CUS_COM_PRE = '$';
-const EVAL = '?';
+const channelManager = {
+  channelLocks: {},
+  TEST_CHNL: null,
+  LOG_CHNL: null,
+};
 const GREET_TIME = {
   hour: 4,
   minute: 30,
@@ -24,28 +26,23 @@ const GREET_TIME = {
   format: 'ampm',
   interval: 24,
 };
-let TEST_CHNL = null;
-let LOG_CHNL = null;
 
-const currentDate = () => {
-  const date = new Date();
-  return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate() + ' ' + date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
-};
+// -----------------------------------------------------------------------
+// EVENTLISTENERS
+// -----------------------------------------------------------------------
 
 process.on('uncaughtException', (err) => {
-  const errTitle = err.stack.slice(0, err.stack.indexOf('\n'));
-  const errDis = err.stack.slice(err.stack.indexOf('\n') + 1, err.stack.length);
-  const embedMsg = new MessageEmbed()
-    .setColor('RED')
-    .setTitle('☠️ ERROR ☠️')
-    .setDescription(errTitle);
-  LOG_CHNL.send({ embeds: [embedMsg] });
-  LOG_CHNL.send('```js\n' + errDis + '\n```');
+  try {
+    embadedMsg({ type: 'error', options: { description: err } });
+  } catch {
+    console.log(err);
+  }
 });
 
 bot.once('ready', () => {
-  LOG_CHNL = bot.channels.cache.get('992506051175923762');
-  TEST_CHNL = bot.channels.cache.get('991406109598425199');
+  channelManager.LOG_CHNL = bot.channels.cache.get('992506051175923762');
+  channelManager.TEST_CHNL = bot.channels.cache.get('991406109598425199');
+  setup();
   console.log(`[Logged In] --> ${currentDate()} --> ${bot.user.username}, ${bot.user.tag}`);
   const initInterval = setInterval((date = new Date()) => {
     if (date.getHours() === GREET_TIME.hour && date.getMinutes() === GREET_TIME.minute) {
@@ -55,10 +52,7 @@ bot.once('ready', () => {
       clearInterval(initInterval);
     }
   }, 1000);
-  const embedMsg = new MessageEmbed()
-    .setColor('GREEN')
-    .setTitle('Logged In');
-  LOG_CHNL.send({ embeds: [embedMsg] });
+  embadedMsg({ type: 'success', options: { title: 'Logged In' } });
 });
 
 bot.on('typingStart', (type) => {
@@ -66,105 +60,23 @@ bot.on('typingStart', (type) => {
 });
 
 bot.on('messageCreate', (message) => {
-  if (!message.author.bot) {
-    switch (message.content[0]) {
-      case CUS_COM_PRE: {
-        const [CMD, ...args] = message.content
-          .substring(1)
-          .trim()
-          .split(/\s+/);
-        if (CUS_CMDS.includes(CMD)) {
-          switch (CMD) {
-            case 'clear': {
-              if (args[0] === 'all') {
-                bot.channels.cache
-                  .filter(channel => channel.type === 'GUILD_TEXT')
-                  .forEach(channel => {
-                    if (!channelLocks[channel.id]) {
-                      channelLocks[channel.id] = true;
-                      console.log(`Clear ${channel.name}`);
-                      channel.messages._fetchMany({}, true)
-                        .then(async (messages) => {
-                          for (const message of messages.values()) {
-                            await message.delete();
-                          }
-                          return Promise.resolve();
-                        })
-                        .then(() => console.log(`Done Clearing ${channel.name}`))
-                        .catch(e => console.log(`Couldn't Clear ${channel.name} \n ${e}`))
-                        .finally(() => { channelLocks[channel.id] = false; });
-                    } else {
-                      message.channel.send(`> Clear already running for ${channel.name}`);
-                    }
-                  });
-              } else {
-                if (!channelLocks[message.channel.id]) {
-                  channelLocks[message.channel.id] = true;
-                  console.log(`Clear ${message.channel.name}`);
-                  message.channel.messages._fetchMany({}, true)
-                    .then(async messages => {
-                      for (const message of messages.values()) {
-                        await message.delete();
-                      }
-                      return Promise.resolve();
-                    }).then(r => console.log(`Done Clearing ${message.channel.name}`))
-                    .catch(e => console.log(`Couldn't Clear ${message.channel.name} \n ${e}`))
-                    .finally(() => { channelLocks[message.channel.id] = false; });
-                } else {
-                  message.channel.send(`> Clear already running for ${message.channel.name}`);
-                }
-              }
-              break;
-            }
-            default: {
-              message.channel.messages._fetchMany({}, true)
-                .then(messages => {
-                  messages.forEach(message => message.delete());
-                })
-                .catch(e => console.log(e));
-            }
-          }
-        }
-        break;
-      }
-      case EVAL: {
-        if (message.channel.id === TEST_CHNL.id) {
-          const CMD = message.content
-            .substring(1)
-            .trim();
-          try {
-            const res = (eval)(CMD);
-            if (res instanceof Promise) {
-              res.then(res => {
-                console.log('Prom');
-                if (typeof res === 'object') {
-                  message.channel.send('```json\n' + JSON.stringify(res.toJSON(), null, 2) + '\n```');
-                } else {
-                  message.channel.send(res.toString());
-                }
-              });
-            } else {
-              if (typeof res === 'object') {
-                message.channel.send('```json\n' + JSON.stringify(res.toJSON(), null, 2) + '\n```');
-              } else {
-                message.channel.send(res.toString());
-              }
-            }
-          } catch (e) {
-            message.channel.send('> Something Went Wrong !! ☠️☠️');
-            message.channel.send('```js\n' + e.stack + '\n```');
-          }
-        }
-        break;
-      }
-      default: {
-        if (message.content === 'hello') {
-          message.channel.send('Hello');
-        }
-      }
-    }
-  }
+  messageHandler(message, bot);
 });
+
+// -----------------------------------------------------------------------
+// METHODS
+// -----------------------------------------------------------------------
+
+const currentDate = () => {
+  const date = new Date();
+  return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate() + ' ' + date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
+};
+
+const goodMorningGreeter = () => {
+  setInterval(() => {
+    greeter();
+  }, GREET_TIME.interval * 3600000);
+};
 
 const greeter = () => {
   axios.get(`https://tenor.googleapis.com/v2/search?q=Good Morning&key=${process.env.TENOR_TOKEN}&client_key=superbot&limit=8`)
@@ -179,13 +91,14 @@ const greeter = () => {
         });
     })
     .then(response => console.log(`[Greeter  ] --> ${currentDate()} --> Greetings Done!`))
-    .catch(error => console.log('Error: ', error));
+    .catch(error => embadedMsg({ type: 'error', options: { description: error } }));
 };
 
-const goodMorningGreeter = () => {
-  setInterval(() => {
-    greeter();
-  }, GREET_TIME.interval * 3600000);
+const setup = () => {
+  const files = require('./config.json').setupFiles;
+  files.forEach(file => {
+    require(`./${file}`).setup({ channelManager });
+  });
 };
 
 let retry = 0;
