@@ -141,15 +141,14 @@ const setup = () => {
 };
 
 let retry = 0;
-while (true) {
-  try {
-    bot.login(process.env.BOT_TOKEN);
-    break;
-  } catch (err) {
-    console.log(err.stack);
-    if (retry++ >= 5) {
-      console.log('ERROR: Could Not log into Bot');
-      break;
-    }
-  }
-}
+const loginInterval = setInterval(() => {
+  bot.login(process.env.BOT_TOKEN)
+    .then(() => { clearInterval(loginInterval); })
+    .catch((error) => {
+      console.log(error);
+      if (retry++ >= 5) {
+        console.error('ERROR: Could not log into Bot');
+        clearInterval(loginInterval);
+      }
+    });
+}, 1000);
