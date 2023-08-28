@@ -59,21 +59,17 @@ bot.once('ready', async () => {
 
 bot.on('interactionCreate', (interaction) => {
   if (interaction.isCommand()) {
-    const { command, options } = interaction;
+    const delayedInteraction = new DelayedInteraction(interaction);
+    const { command, options } = delayedInteraction.interaction;
     if (command.type === 'CHAT_INPUT') {
       bot.commands[command.name].execute(bot, options)
         .then(res => {
           console.log('Done Executing');
-          interaction.reply({
-            content: res.description,
-            ephemeral: true
-          });
+          delayedInteraction.edit(res.description);
         })
         .catch(res => {
-          interaction.reply({
-            content: res.title,
-            ephemeral: true
-          });
+          console.error(res);
+          delayedInteraction.edit(res.title);
           embadedMsg({ type: 'error', options: { title: res.title, description: res.error } });
         });
     }
@@ -89,8 +85,26 @@ bot.on('messageCreate', (message) => {
 });
 
 // -----------------------------------------------------------------------
-// METHODS
+// METHODS / CLASSES
 // -----------------------------------------------------------------------
+
+class DelayedInteraction {
+  constructor (interaction) {
+    this.interaction = interaction;
+    this.deferPromise = this.interaction.deferReply({ ephemeral: true });
+  }
+
+  async edit (content) {
+    await this.deferPromise;
+    this.interaction.editReply({
+      content,
+      ephemeral: true
+    }).catch(error => {
+      console.error(error);
+      embadedMsg({ type: 'error', options: { title: error.code, description: error } });
+    });
+  }
+}
 
 const currentDate = () => {
   const date = new Date();
@@ -127,15 +141,14 @@ const setup = () => {
 };
 
 let retry = 0;
-while (true) {
-  try {
-    bot.login(process.env.BOT_TOKEN);
-    break;
-  } catch (err) {
-    console.log(err.stack);
-    if (retry++ >= 5) {
-      console.log('ERROR: Could Not log into Bot');
-      break;
-    }
-  }
-}
+const loginInterval = setInterval(() => {
+  bot.login(process.env.BOT_TOKEN)
+    .then(() => { clearInterval(loginInterval); })
+    .catch((error) => {
+      console.log(error);
+      if (retry++ >= 5) {
+        console.error('ERROR: Could not log into Bot');
+        clearInterval(loginInterval);
+      }
+    });
+}, 1000);
