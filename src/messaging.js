@@ -140,7 +140,7 @@ function messageHandler (message, bot) {
         break;
       }
       default: {
-        if (message.content === 'hello') {
+        if (message.content.toLowerCase() === 'hello bot') {
           message.channel.send('Hello');
         }
       }
