@@ -27,6 +27,8 @@ const GREET_TIME = {
   interval: 24,
 };
 
+const EXCLUDED_CATEGORIES = ['1372636516710350869'];
+
 // -----------------------------------------------------------------------
 // EVENTLISTENERS
 // -----------------------------------------------------------------------
@@ -59,9 +61,10 @@ bot.once('ready', async () => {
 
 bot.on('interactionCreate', (interaction) => {
   if (interaction.isCommand()) {
-    const delayedInteraction = new DelayedInteraction(interaction);
-    const { command, options } = delayedInteraction.interaction;
+    const { command, options } = interaction;
+    console.log(interaction);
     if (command.type === 'CHAT_INPUT') {
+      const delayedInteraction = new DelayedInteraction(interaction);
       bot.commands[command.name].execute(bot, options)
         .then(res => {
           console.log('Done Executing');
@@ -122,7 +125,7 @@ const greeter = () => {
     .then(response => response.data.results)
     .then(results => {
       bot.channels.cache
-        .filter((channel) => channel.type === 'GUILD_TEXT')
+        .filter((channel) => channel.type === 'GUILD_TEXT' && !EXCLUDED_CATEGORIES.includes(channel.parentId))
         .forEach((channel) => {
           const index = Math.floor(Math.random() * results.length);
           channel.send(results[index].media_formats.gif.url);
